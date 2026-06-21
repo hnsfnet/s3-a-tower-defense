@@ -34,102 +34,124 @@ def test_game_map():
     return game_map
 
 
-def test_enemy(game_map):
-    print("=== Testing Enemy ===")
-    enemy = Enemy(game_map.path_points, hp=100, speed=50, reward=10)
-    print(f"Enemy start position: ({enemy.x}, {enemy.y})")
-    print(f"Enemy HP: {enemy.hp}/{enemy.max_hp}")
+def test_enemy_types(game_map):
+    print("=== Testing Enemy Types ===")
 
-    enemy.update(0.1)
-    print(f"Position after update: ({enemy.x}, {enemy.y})")
+    for enemy_type in ['normal', 'fast', 'boss']:
+        enemy = Enemy.create(game_map.path_points, wave=1, enemy_type=enemy_type)
+        print(f"{enemy_type}: HP={enemy.max_hp}, Speed={enemy.base_speed}, "
+              f"Reward={enemy.reward}, Size={enemy.size}")
+    print()
 
-    killed = enemy.take_damage(50)
-    print(f"After 50 damage: HP={enemy.hp}, Killed={killed}")
-    assert not killed, "Should not be dead"
+    print("Testing slow effect:")
+    normal = Enemy.create(game_map.path_points, wave=1, enemy_type='normal')
+    original_speed = normal.base_speed
+    normal.apply_slow(0.5, 2.0)
+    current_speed = normal.get_current_speed()
+    print(f"Original speed: {original_speed}, Slowed speed: {current_speed}")
+    assert abs(current_speed - original_speed * 0.5) < 0.01, "Slow effect not working"
 
-    killed = enemy.take_damage(50)
-    print(f"After another 50 damage: HP={enemy.hp}, Killed={killed}")
-    assert killed, "Should be dead"
-    assert not enemy.alive, "Enemy should be marked as dead"
+    normal.update(3.0)
+    speed_after = normal.get_current_speed()
+    print(f"Speed after 3 seconds: {speed_after}")
+    assert abs(speed_after - original_speed) < 0.01, "Slow should have expired"
 
-    print("Enemy module test passed!\n")
-
-
-def test_tower(game_map):
-    print("=== Testing Tower ===")
-    arrow_tower = Tower(1, 1, 'arrow')
-    print(f"Arrow tower position: ({arrow_tower.x}, {arrow_tower.y})")
-    print(f"Arrow tower damage: {arrow_tower.damage}")
-    print(f"Arrow tower range: {arrow_tower.range}")
-    print(f"Arrow tower fire rate: {arrow_tower.fire_rate}s")
-
-    cannon_tower = Tower(2, 2, 'cannon')
-    print(f"Cannon tower damage: {cannon_tower.damage}")
-    print(f"Cannon tower splash: {cannon_tower.splash}, radius: {cannon_tower.splash_radius}")
-
-    enemies = []
-    projectiles = []
-    explosions = []
-    arrow_tower.update(0.1, enemies, projectiles, explosions)
-    print(f"Projectiles with no enemies: {len(projectiles)}")
-
-    print("Tower module test passed!\n")
+    print("Enemy types test passed!\n")
 
 
-def test_wave_manager(game_map):
-    print("=== Testing Wave Manager ===")
+def test_tower_types_and_upgrades(game_map):
+    print("=== Testing Tower Types & Upgrades ===")
+
+    tower_types = ['arrow', 'cannon', 'ice', 'lightning']
+    for t_type in tower_types:
+        tower = Tower(1, 1, t_type)
+        print(f"\n{tower.name} (Level 1):")
+        print(f"  Damage: {tower.damage}, Range: {tower.range}, Fire rate: {tower.fire_rate}s")
+        print(f"  Size: {tower.size}, Attack type: {tower.attack_type}")
+
+        while tower.can_upgrade():
+            cost = tower.get_upgrade_cost()
+            success = tower.upgrade()
+            assert success, "Upgrade should succeed"
+            print(f"  -> Level {tower.level}: Damage={tower.damage}, "
+                  f"Range={tower.range}, Size={tower.size}")
+
+        assert not tower.can_upgrade(), "Should reach max level"
+        assert tower.level == MAX_TOWER_LEVEL, f"Should be level {MAX_TOWER_LEVEL}"
+
+    print("\nTower types & upgrades test passed!\n")
+
+
+def test_wave_manager_mixed(game_map):
+    print("=== Testing Wave Manager (Mixed Enemies) ===")
     wm = WaveManager(game_map.path_points)
     print(f"Total waves: {wm.total_waves}")
-    print(f"Current wave: {wm.current_wave}")
 
-    enemies = []
-    wm.start_wave()
-    print(f"Starting wave 1, enemy count: {wm.enemies_per_wave}")
-    assert wm.wave_active == True, "Wave should be active"
+    for wave in range(1, min(6, wm.total_waves + 1)):
+        enemies = []
+        wm.start_wave()
+        queue = list(wm.wave_spawn_queue)
+        normal = queue.count('normal')
+        fast = queue.count('fast')
+        boss = queue.count('boss')
+        print(f"Wave {wave}: {normal} normal, {fast} fast, {boss} boss (total: {len(queue)})")
 
-    for i in range(20):
-        wm.update(0.5, enemies)
-    print(f"Spawned enemies: {wm.enemies_spawned}")
-    print(f"Enemies on field: {len(enemies)}")
+        for i in range(100):
+            wm.update(0.5, enemies)
+            if len(wm.wave_spawn_queue) == 0:
+                break
+        print(f"  Spawned: {wm.enemies_spawned} enemies")
 
-    print("Wave manager test passed!\n")
+    print("Wave manager (mixed) test passed!\n")
 
 
-def test_projectile(game_map):
-    print("=== Testing Projectile ===")
-    enemy = Enemy(game_map.path_points, hp=100, speed=0, reward=10)
+def test_projectile_types(game_map):
+    print("=== Testing Projectile Types ===")
+
+    print("Testing slow projectile:")
+    enemy = Enemy.create(game_map.path_points, wave=1, enemy_type='normal')
     enemy.x = 200
     enemy.y = 200
+    original_speed = enemy.base_speed
 
-    proj = Projectile(100, 200, enemy, damage=30)
-    print(f"Projectile start position: ({proj.x}, {proj.y})")
-
+    proj = Projectile(100, 200, enemy, damage=10, attack_type='slow',
+                     slow_percent=0.5, slow_duration=2.0)
     enemies = [enemy]
-    for i in range(100):
-        rewards = proj.update(0.01, enemies)
+    for i in range(200):
+        proj.update(0.01, enemies)
         if not proj.active:
             break
 
-    print(f"Enemy HP after hit: {enemy.hp}")
-    assert enemy.hp == 70, f"Should have 70 HP left, got {enemy.hp}"
-    print("Projectile test passed!\n")
+    print(f"  HP after hit: {enemy.hp}")
+    assert enemy.hp == 90, "Should have 90 HP left"
+    slowed_speed = enemy.get_current_speed()
+    print(f"  Speed after hit: {slowed_speed}")
+    assert abs(slowed_speed - original_speed * 0.5) < 0.01, "Slow not applied"
+
+    print("\nProjectile types test passed!\n")
 
 
 if __name__ == '__main__':
-    print("Starting tower defense game module tests...\n")
+    print("=" * 50)
+    print("Starting Tower Defense v2 Module Tests")
+    print("=" * 50 + "\n")
 
     try:
         game_map = test_game_map()
-        test_enemy(game_map)
-        test_tower(game_map)
-        test_wave_manager(game_map)
-        test_projectile(game_map)
-        print("✅ All tests passed!")
+        test_enemy_types(game_map)
+        test_tower_types_and_upgrades(game_map)
+        test_wave_manager_mixed(game_map)
+        test_projectile_types(game_map)
+        print("=" * 50)
+        print("ALL TESTS PASSED!")
+        print("=" * 50)
     except AssertionError as e:
-        print(f"❌ Test failed: {e}")
+        print(f"\nTEST FAILED: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"\nERROR: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

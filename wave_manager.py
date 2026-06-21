@@ -7,11 +7,36 @@ class WaveManager:
         self.path_points = path_points
         self.current_wave = 0
         self.enemies_spawned = 0
-        self.enemies_per_wave = 0
+        self.total_enemies_in_wave = 0
+        self.wave_spawn_queue = []
         self.spawn_timer = 0
         self.spawn_interval = WAVE_SPAWN_INTERVAL
         self.wave_active = False
         self.total_waves = TOTAL_WAVES
+
+    def _generate_wave_queue(self, wave_num):
+        queue = []
+        base_count = WAVE_ENEMY_BASE + (wave_num - 1) * WAVE_ENEMY_INCREMENT
+
+        is_boss_wave = (wave_num % BOSS_WAVE_INTERVAL == 0)
+
+        if is_boss_wave:
+            fast_count = max(2, base_count // 3)
+            normal_count = max(2, base_count - fast_count)
+        else:
+            fast_count = base_count // 3 if wave_num >= 3 else 0
+            normal_count = base_count - fast_count
+
+        for _ in range(normal_count):
+            queue.append('normal')
+
+        for _ in range(fast_count):
+            queue.append('fast')
+
+        if is_boss_wave:
+            queue.append('boss')
+
+        return queue
 
     def start_wave(self):
         if self.current_wave >= self.total_waves:
@@ -19,7 +44,8 @@ class WaveManager:
 
         self.current_wave += 1
         self.enemies_spawned = 0
-        self.enemies_per_wave = WAVE_ENEMY_BASE + (self.current_wave - 1) * WAVE_ENEMY_INCREMENT
+        self.wave_spawn_queue = self._generate_wave_queue(self.current_wave)
+        self.total_enemies_in_wave = len(self.wave_spawn_queue)
         self.spawn_timer = 0
         self.wave_active = True
 
@@ -27,21 +53,23 @@ class WaveManager:
         if not self.wave_active:
             return
 
-        if self.enemies_spawned >= self.enemies_per_wave:
+        if len(self.wave_spawn_queue) == 0:
             return
 
         self.spawn_timer -= dt
         if self.spawn_timer <= 0:
-            self._spawn_enemy(enemies)
-            self.spawn_timer = self.spawn_interval
+            self._spawn_next_enemy(enemies)
+            if len(self.wave_spawn_queue) > 0 and self.wave_spawn_queue[0] == 'boss':
+                self.spawn_timer = self.spawn_interval * 2
+            else:
+                self.spawn_timer = self.spawn_interval
 
-    def _spawn_enemy(self, enemies):
-        wave_multiplier = WAVE_HP_MULTIPLIER ** (self.current_wave - 1)
-        hp = int(ENEMY_BASE_STATS['hp'] * wave_multiplier)
-        speed = ENEMY_BASE_STATS['speed']
-        reward = int(ENEMY_BASE_STATS['reward'] * (1 + (self.current_wave - 1) * 0.1))
+    def _spawn_next_enemy(self, enemies):
+        if len(self.wave_spawn_queue) == 0:
+            return
 
-        enemy = Enemy(self.path_points, hp, speed, reward)
+        enemy_type = self.wave_spawn_queue.pop(0)
+        enemy = Enemy.create(self.path_points, self.current_wave, enemy_type)
         enemies.append(enemy)
         self.enemies_spawned += 1
 
@@ -49,7 +77,7 @@ class WaveManager:
         if not self.wave_active:
             return False
 
-        if self.enemies_spawned < self.enemies_per_wave:
+        if len(self.wave_spawn_queue) > 0:
             return False
 
         for enemy in enemies:
@@ -62,7 +90,7 @@ class WaveManager:
         self.wave_active = False
 
     def get_remaining_enemies(self, enemies):
-        remaining = self.enemies_per_wave - self.enemies_spawned
+        remaining = len(self.wave_spawn_queue)
         for enemy in enemies:
             if enemy.alive and not enemy.reached_end:
                 remaining += 1
@@ -70,3 +98,16 @@ class WaveManager:
 
     def is_game_won(self):
         return self.current_wave >= self.total_waves and not self.wave_active
+
+    def get_wave_info(self):
+        normal = 0
+        fast = 0
+        boss = 0
+        for t in self.wave_spawn_queue:
+            if t == 'normal':
+                normal += 1
+            elif t == 'fast':
+                fast += 1
+            elif t == 'boss':
+                boss += 1
+        return normal, fast, boss
