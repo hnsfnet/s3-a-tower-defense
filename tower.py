@@ -183,6 +183,15 @@ class Tower:
         self._apply_level_stats()
         return True
 
+    def get_total_invested(self):
+        total = self.cost
+        for lv in range(1, self.level):
+            total += TOWER_TYPES[self.tower_type]['levels'][lv - 1]['upgrade_cost']
+        return total
+
+    def get_sell_refund(self, refund_ratio=0.5):
+        return int(self.get_total_invested() * refund_ratio)
+
     def update(self, dt, enemies, projectiles, effects):
         self.fire_timer -= dt
 

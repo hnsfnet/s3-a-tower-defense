@@ -60,14 +60,14 @@ def _load_json(filename):
 
 
 def _apply_color_keys(config_dict):
+    for ckey in list(config_dict.keys()):
+        if ckey.endswith('color_key'):
+            color_ref = config_dict.pop(ckey)
+            new_key = ckey.replace('color_key', 'color')
+            config_dict[new_key] = COLORS[color_ref]
     for key, value in config_dict.items():
         if isinstance(value, dict):
             _apply_color_keys(value)
-            for ckey in list(value.keys()):
-                if ckey.endswith('_color_key'):
-                    color_key = value.pop(ckey)
-                    new_key = ckey.replace('_color_key', '_color')
-                    value[new_key] = COLORS[color_key]
 
 
 def load_tower_config():

@@ -38,6 +38,8 @@ class Game:
         self.projectiles = []
         self.effects = []
         self.economy.reset()
+        self.paused = False
+        self.speed_multiplier = 1
 
         self.selected_tile = None
         self.show_tower_menu = False
@@ -201,6 +203,10 @@ class Game:
                 mouse_x, mouse_y, mx, my)
 
     def _update(self, dt):
+        if self.economy.is_game_over():
+            self.state = 'lost'
+            return
+
         self.wave_system.update(dt, self.enemies)
 
         self.combat.update_enemies(dt, self.enemies)
@@ -223,6 +229,9 @@ class Game:
         if self.wave_system.check_and_end_wave(self.enemies):
             if self.wave_system.is_game_won():
                 self.state = 'won'
+
+        if self.wave_system.is_game_won():
+            self.state = 'won'
 
 
 if __name__ == '__main__':

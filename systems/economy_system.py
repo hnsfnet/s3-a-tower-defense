@@ -52,6 +52,11 @@ class EconomySystem:
             return True
         return False
 
+    def sell_tower(self, tower, refund_ratio=0.5):
+        refund = tower.get_sell_refund(refund_ratio)
+        self.gold += refund
+        return refund
+
     def is_game_over(self):
         return self.lives <= 0
 
