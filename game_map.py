@@ -43,35 +43,52 @@ class GameMap:
             return []
 
         visited = set()
+        parent = {}
         queue = deque()
-        queue.append((start_pos, [start_pos]))
+        queue.append(start_pos)
         visited.add(start_pos)
+        parent[start_pos] = None
 
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
+        found = False
         while queue:
-            (row, col), path = queue.popleft()
+            current = queue.popleft()
 
-            if (row, col) == end_pos:
-                pixel_path = []
-                for r, c in path:
-                    px = c * TILE_SIZE + TILE_SIZE // 2
-                    py = r * TILE_SIZE + TILE_SIZE // 2
-                    pixel_path.append((px, py))
-                return pixel_path
+            if current == end_pos:
+                found = True
+                break
 
+            row, col = current
             for dr, dc in directions:
                 new_row = row + dr
                 new_col = col + dc
+                neighbor = (new_row, new_col)
 
                 if 0 <= new_row < GRID_ROWS and 0 <= new_col < GRID_COLS:
-                    if (new_row, new_col) not in visited:
+                    if neighbor not in visited:
                         cell = self.grid[new_row][new_col]
                         if cell == PATH or cell == END:
-                            visited.add((new_row, new_col))
-                            queue.append(((new_row, new_col), path + [(new_row, new_col)]))
+                            visited.add(neighbor)
+                            parent[neighbor] = current
+                            queue.append(neighbor)
 
-        return []
+        if not found:
+            return []
+
+        path_cells = []
+        node = end_pos
+        while node is not None:
+            path_cells.append(node)
+            node = parent[node]
+        path_cells.reverse()
+
+        pixel_path = []
+        for r, c in path_cells:
+            px = c * TILE_SIZE + TILE_SIZE // 2
+            py = r * TILE_SIZE + TILE_SIZE // 2
+            pixel_path.append((px, py))
+        return pixel_path
 
     def is_placeable(self, grid_col, grid_row):
         if 0 <= grid_row < GRID_ROWS and 0 <= grid_col < GRID_COLS:

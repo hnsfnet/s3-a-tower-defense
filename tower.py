@@ -264,23 +264,58 @@ class Tower:
         return killed_rewards
 
     def _find_target(self, enemies):
-        best_target = None
-        best_progress = -1
-
+        in_range = []
         for enemy in enemies:
             if not enemy.alive:
                 continue
-
             dx = enemy.x - self.x
             dy = enemy.y - self.y
             dist = math.sqrt(dx * dx + dy * dy)
-
             if dist <= self.range:
-                progress = enemy.path_index
-                if progress > best_progress:
-                    best_progress = progress
-                    best_target = enemy
+                in_range.append(enemy)
 
+        if not in_range:
+            return None
+
+        if self.attack_type == 'splash':
+            return self._find_best_aoe_target(in_range, enemies)
+
+        best_target = None
+        best_progress = -1
+        for enemy in in_range:
+            progress = enemy.path_index
+            if progress > best_progress:
+                best_progress = progress
+                best_target = enemy
+        return best_target
+
+    def _find_best_aoe_target(self, in_range_enemies, all_enemies):
+        best_target = None
+        best_hit_count = 0
+        best_progress = -1
+
+        for candidate in in_range_enemies:
+            hit_count = 0
+            for enemy in all_enemies:
+                if not enemy.alive:
+                    continue
+                dx = enemy.x - candidate.x
+                dy = enemy.y - candidate.y
+                dist = math.sqrt(dx * dx + dy * dy)
+                if dist <= self.splash_radius:
+                    hit_count += 1
+
+            if hit_count > best_hit_count:
+                best_hit_count = hit_count
+                best_target = candidate
+                best_progress = candidate.path_index
+            elif hit_count == best_hit_count and best_hit_count > 0:
+                if candidate.path_index > best_progress:
+                    best_target = candidate
+                    best_progress = candidate.path_index
+
+        if best_target is None and in_range_enemies:
+            best_target = in_range_enemies[0]
         return best_target
 
     def draw(self, surface, show_range=False):

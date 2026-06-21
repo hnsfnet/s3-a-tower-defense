@@ -84,7 +84,7 @@ class Game:
                 self.speed_multiplier = 2 if self.speed_multiplier == 1 else 1
                 return
             elif event.key == pygame.K_RETURN:
-                if not self.wave_manager.wave_active and not self.wave_manager.is_game_won():
+                if self.wave_manager.can_start_next_wave():
                     self.wave_manager.start_wave()
                 return
 
@@ -231,8 +231,8 @@ class Game:
         if self.gold < cost:
             return
 
-        self.gold -= cost
-        self.selected_tower.upgrade()
+        if self.selected_tower.upgrade():
+            self.gold -= cost
 
     def _update(self, dt):
         self.wave_manager.update(dt, self.enemies)
@@ -375,10 +375,18 @@ class Game:
         pause_rect.top = 8
         self.screen.blit(pause_text, pause_rect)
 
-        if not self.wave_manager.wave_active and not self.wave_manager.is_game_won():
-            hint = self.font_small.render('Press ENTER to start wave | SPACE: Pause | F: 2x Speed', True, (200, 200, 100))
-            hint_rect = hint.get_rect(center=(SCREEN_WIDTH // 2, TOP_UI_HEIGHT - 15))
-            self.screen.blit(hint, hint_rect)
+        if self.wave_manager.in_cooldown:
+            cooldown = self.wave_manager.get_cooldown_remaining()
+            hint = self.font_small.render(
+                f'Next wave in {cooldown:.1f}s...', True, (200, 200, 100))
+        elif not self.wave_manager.wave_active and not self.wave_manager.is_game_won():
+            hint = self.font_small.render(
+                'Press ENTER to start wave | SPACE: Pause | F: 2x Speed', True, (200, 200, 100))
+        else:
+            hint = self.font_small.render(
+                'SPACE: Pause | F: 2x Speed', True, (200, 200, 100))
+        hint_rect = hint.get_rect(center=(SCREEN_WIDTH // 2, TOP_UI_HEIGHT - 15))
+        self.screen.blit(hint, hint_rect)
 
     def _draw_tower_place_menu(self):
         menu_x, menu_y = self._get_place_menu_position()

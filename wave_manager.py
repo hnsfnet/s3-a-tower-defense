@@ -13,6 +13,8 @@ class WaveManager:
         self.spawn_interval = WAVE_SPAWN_INTERVAL
         self.wave_active = False
         self.total_waves = TOTAL_WAVES
+        self.cooldown_timer = 0
+        self.in_cooldown = False
 
     def _generate_wave_queue(self, wave_num):
         queue = []
@@ -41,6 +43,8 @@ class WaveManager:
     def start_wave(self):
         if self.current_wave >= self.total_waves:
             return
+        if self.in_cooldown:
+            return
 
         self.current_wave += 1
         self.enemies_spawned = 0
@@ -48,8 +52,16 @@ class WaveManager:
         self.total_enemies_in_wave = len(self.wave_spawn_queue)
         self.spawn_timer = 0
         self.wave_active = True
+        self.in_cooldown = False
 
     def update(self, dt, enemies):
+        if self.in_cooldown:
+            self.cooldown_timer -= dt
+            if self.cooldown_timer <= 0:
+                self.in_cooldown = False
+                self.wave_active = False
+            return
+
         if not self.wave_active:
             return
 
@@ -74,7 +86,7 @@ class WaveManager:
         self.enemies_spawned += 1
 
     def is_wave_complete(self, enemies):
-        if not self.wave_active:
+        if not self.wave_active or self.in_cooldown:
             return False
 
         if len(self.wave_spawn_queue) > 0:
@@ -87,7 +99,16 @@ class WaveManager:
         return True
 
     def end_wave(self):
-        self.wave_active = False
+        self.in_cooldown = True
+        self.cooldown_timer = WAVE_COOLDOWN
+
+    def can_start_next_wave(self):
+        return not self.wave_active and not self.in_cooldown and not self.is_game_won()
+
+    def get_cooldown_remaining(self):
+        if self.in_cooldown:
+            return self.cooldown_timer
+        return 0
 
     def get_remaining_enemies(self, enemies):
         remaining = len(self.wave_spawn_queue)
