@@ -23,10 +23,13 @@ class WaveManager:
         is_boss_wave = (wave_num % BOSS_WAVE_INTERVAL == 0)
 
         if is_boss_wave:
-            fast_count = max(2, base_count // 3)
-            normal_count = max(2, base_count - fast_count)
+            fast_count = BOSS_WAVE_EXTRA_FAST
+            normal_count = BOSS_WAVE_EXTRA_NORMAL + max(0, base_count - BOSS_WAVE_EXTRA_FAST - BOSS_WAVE_EXTRA_NORMAL)
         else:
-            fast_count = base_count // 3 if wave_num >= 3 else 0
+            if wave_num >= FAST_ENEMY_START_WAVE:
+                fast_count = int(base_count * FAST_ENEMY_RATIO)
+            else:
+                fast_count = 0
             normal_count = base_count - fast_count
 
         for _ in range(normal_count):
@@ -118,7 +121,7 @@ class WaveManager:
         return remaining
 
     def is_game_won(self):
-        return self.current_wave >= self.total_waves and not self.wave_active
+        return self.current_wave >= self.total_waves and not self.wave_active and not self.in_cooldown
 
     def get_wave_info(self):
         normal = 0

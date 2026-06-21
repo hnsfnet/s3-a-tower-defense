@@ -1,0 +1,34 @@
+{
+  "base_stats": {
+    "hp": 100,
+    "speed": 60,
+    "reward": 15,
+    "size": 14
+  },
+  "types": {
+    "normal": {
+      "name": "Normal",
+      "hp_multiplier": 1.0,
+      "speed_multiplier": 1.0,
+      "reward_multiplier": 1.0,
+      "size_multiplier": 1.0,
+      "color_key": "enemy_normal"
+    },
+    "fast": {
+      "name": "Fast",
+      "hp_multiplier": 0.5,
+      "speed_multiplier": 2.0,
+      "reward_multiplier": 1.2,
+      "size_multiplier": 0.8,
+      "color_key": "enemy_fast"
+    },
+    "boss": {
+      "name": "Boss",
+      "hp_multiplier": 10.0,
+      "speed_multiplier": 0.6,
+      "reward_multiplier": 5.0,
+      "size_multiplier": 1.8,
+      "color_key": "enemy_boss"
+    }
+  }
+}

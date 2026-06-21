@@ -2,14 +2,6 @@ import math
 from config import *
 
 
-def _darken_color(color, amount=30):
-    return (max(0, color[0] - amount), max(0, color[1] - amount), max(0, color[2] - amount))
-
-
-def _get_tower_level_color(base_color, level):
-    return _darken_color(base_color, (level - 1) * 25)
-
-
 class LightningEffect:
     def __init__(self, points):
         self.points = points
@@ -174,7 +166,7 @@ class Tower:
         self.fire_rate = level_data['fire_rate']
         self.size = level_data['size']
         self.upgrade_cost = level_data['upgrade_cost']
-        self.color = _get_tower_level_color(self.base_color, self.level)
+        self.color = get_tower_level_color(self.base_color, self.level)
 
     def can_upgrade(self):
         return self.level < MAX_TOWER_LEVEL

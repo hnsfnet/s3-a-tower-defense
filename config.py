@@ -1,3 +1,6 @@
+import json
+import os
+
 TILE_SIZE = 40
 GRID_COLS = 20
 GRID_ROWS = 15
@@ -45,113 +48,65 @@ COLORS = {
     'upgrade_disabled': (80, 80, 80),
 }
 
+INITIAL_GOLD = 200
+INITIAL_LIVES = 20
 
-def _darken_color(color, amount=30):
+
+def _load_json(filename):
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(base_dir, 'configs', filename)
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def _apply_color_keys(config_dict):
+    for key, value in config_dict.items():
+        if isinstance(value, dict):
+            _apply_color_keys(value)
+            for ckey in list(value.keys()):
+                if ckey.endswith('_color_key'):
+                    color_key = value.pop(ckey)
+                    new_key = ckey.replace('_color_key', '_color')
+                    value[new_key] = COLORS[color_key]
+
+
+def load_tower_config():
+    data = _load_json('tower_config.json')
+    _apply_color_keys(data)
+    return data
+
+
+def load_enemy_config():
+    data = _load_json('enemy_config.json')
+    _apply_color_keys(data)
+    return data
+
+
+def load_wave_config():
+    return _load_json('wave_config.json')
+
+
+def darken_color(color, amount=30):
     return (max(0, color[0] - amount), max(0, color[1] - amount), max(0, color[2] - amount))
 
 
-def _get_tower_level_color(base_color, level):
-    return _darken_color(base_color, (level - 1) * 25)
+def get_tower_level_color(base_color, level):
+    return darken_color(base_color, (level - 1) * 25)
 
 
-TOWER_TYPES = {
-    'arrow': {
-        'name': 'Arrow Tower',
-        'cost': 50,
-        'base_color': COLORS['arrow_tower'],
-        'projectile_color': COLORS['projectile'],
-        'attack_type': 'single',
-        'levels': [
-            {'damage': 15, 'range': 120, 'fire_rate': 0.5, 'size': 14, 'upgrade_cost': 60},
-            {'damage': 25, 'range': 140, 'fire_rate': 0.4, 'size': 16, 'upgrade_cost': 100},
-            {'damage': 40, 'range': 160, 'fire_rate': 0.3, 'size': 18, 'upgrade_cost': 0},
-        ],
-    },
-    'cannon': {
-        'name': 'Cannon Tower',
-        'cost': 100,
-        'base_color': COLORS['cannon_tower'],
-        'projectile_color': COLORS['projectile'],
-        'attack_type': 'splash',
-        'splash_radius': 50,
-        'levels': [
-            {'damage': 40, 'range': 90, 'fire_rate': 1.5, 'size': 16, 'upgrade_cost': 100},
-            {'damage': 70, 'range': 105, 'fire_rate': 1.3, 'size': 18, 'upgrade_cost': 160},
-            {'damage': 110, 'range': 120, 'fire_rate': 1.1, 'size': 20, 'upgrade_cost': 0},
-        ],
-    },
-    'ice': {
-        'name': 'Ice Tower',
-        'cost': 75,
-        'base_color': COLORS['ice_tower'],
-        'projectile_color': COLORS['ice_projectile'],
-        'attack_type': 'slow',
-        'slow_percent': 0.5,
-        'slow_duration': 2.0,
-        'levels': [
-            {'damage': 8, 'range': 110, 'fire_rate': 0.7, 'size': 14, 'upgrade_cost': 80},
-            {'damage': 14, 'range': 125, 'fire_rate': 0.6, 'size': 16, 'upgrade_cost': 130},
-            {'damage': 22, 'range': 140, 'fire_rate': 0.5, 'size': 18, 'upgrade_cost': 0},
-        ],
-    },
-    'lightning': {
-        'name': 'Lightning Tower',
-        'cost': 125,
-        'base_color': COLORS['lightning_tower'],
-        'projectile_color': COLORS['lightning'],
-        'attack_type': 'chain',
-        'chain_count': 3,
-        'chain_damage_decay': 0.7,
-        'levels': [
-            {'damage': 25, 'range': 130, 'fire_rate': 1.0, 'size': 15, 'upgrade_cost': 120},
-            {'damage': 40, 'range': 150, 'fire_rate': 0.9, 'size': 17, 'upgrade_cost': 180},
-            {'damage': 65, 'range': 170, 'fire_rate': 0.7, 'size': 19, 'upgrade_cost': 0},
-        ],
-    },
-}
-
-
-ENEMY_TYPES = {
-    'normal': {
-        'name': 'Normal',
-        'hp_multiplier': 1.0,
-        'speed_multiplier': 1.0,
-        'reward_multiplier': 1.0,
-        'size_multiplier': 1.0,
-        'color': COLORS['enemy_normal'],
-    },
-    'fast': {
-        'name': 'Fast',
-        'hp_multiplier': 0.5,
-        'speed_multiplier': 2.0,
-        'reward_multiplier': 1.2,
-        'size_multiplier': 0.8,
-        'color': COLORS['enemy_fast'],
-    },
-    'boss': {
-        'name': 'Boss',
-        'hp_multiplier': 10.0,
-        'speed_multiplier': 0.6,
-        'reward_multiplier': 5.0,
-        'size_multiplier': 1.8,
-        'color': COLORS['enemy_boss'],
-    },
-}
-
-ENEMY_BASE_STATS = {
-    'hp': 100,
-    'speed': 60,
-    'reward': 15,
-    'size': 14,
-}
-
-INITIAL_GOLD = 200
-INITIAL_LIVES = 20
-TOTAL_WAVES = 10
-
-WAVE_ENEMY_BASE = 5
-WAVE_ENEMY_INCREMENT = 3
-WAVE_HP_MULTIPLIER = 1.2
-WAVE_SPAWN_INTERVAL = 1.0
-WAVE_COOLDOWN = 3.0
-BOSS_WAVE_INTERVAL = 5
+TOWER_TYPES = load_tower_config()
+_ENEMY_CFG = load_enemy_config()
+ENEMY_BASE_STATS = _ENEMY_CFG['base_stats']
+ENEMY_TYPES = _ENEMY_CFG['types']
+_WAVE_CFG = load_wave_config()
+TOTAL_WAVES = _WAVE_CFG['total_waves']
+WAVE_ENEMY_BASE = _WAVE_CFG['enemy_base']
+WAVE_ENEMY_INCREMENT = _WAVE_CFG['enemy_increment']
+WAVE_HP_MULTIPLIER = _WAVE_CFG['hp_multiplier']
+WAVE_SPAWN_INTERVAL = _WAVE_CFG['spawn_interval']
+WAVE_COOLDOWN = _WAVE_CFG['cooldown']
+BOSS_WAVE_INTERVAL = _WAVE_CFG['boss_wave_interval']
+FAST_ENEMY_START_WAVE = _WAVE_CFG['fast_enemy_start_wave']
+FAST_ENEMY_RATIO = _WAVE_CFG['fast_enemy_ratio']
+BOSS_WAVE_EXTRA_NORMAL = _WAVE_CFG['boss_wave_extra_normal']
+BOSS_WAVE_EXTRA_FAST = _WAVE_CFG['boss_wave_extra_fast']
